@@ -1,3 +1,7 @@
+import os
+
+TOKEN = os.getenv("TOKEN")
+
 TOKEN = "8603830213:AAHlfZQUjuVDdv_syAfot5uQZfk0q22Snjs"
 CHANNEL_USERNAME = "@Submit2Get"
 ADMIN_ID = 7030829887  # তোমার Telegram ID

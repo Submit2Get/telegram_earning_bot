@@ -63,7 +63,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if not await check_join(update, context):
-        await update.message.reply_text("⚠️ আগে channel join করো!")
+        await update.message.reply_text("⚠️ First channel join now!")
         return
 
     if text == "💰 Balance":
