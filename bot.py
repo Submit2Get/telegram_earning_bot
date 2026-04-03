@@ -57,3 +57,21 @@ app.run_polling()
 if __name__ == "__main__":
     print("Bot Started...")
     app.run_polling()
+
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    app.run(host="0.0.0.0", port=8080)
+
+# Run web server in separate thread
+threading.Thread(target=run_web).start()
+
+# Start telegram bot
+application.run_polling()
