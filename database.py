@@ -65,3 +65,27 @@ def create_withdraw(user_id, amount):
 def get_all_users():
     cursor.execute("SELECT user_id FROM users")
     return cursor.fetchall()
+
+
+
+from pymongo import MongoClient
+from config import MONGO_URI
+
+client = MongoClient(MONGO_URI)
+db = client["telegram_bot"]
+
+users_collection = db["users"]
+withdraw_collection = db["withdraws"]
+
+def add_user(user_id):
+    if not users_collection.find_one({"user_id": user_id}):
+        users_collection.insert_one({"user_id": user_id, "balance": 0})
+
+def get_user(user_id):
+    return users_collection.find_one({"user_id": user_id})
+
+def update_balance(user_id, amount):
+    users_collection.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balance": amount}}
+    )
