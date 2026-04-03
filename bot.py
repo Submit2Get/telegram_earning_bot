@@ -2,21 +2,26 @@ import os
 import threading
 from flask import Flask
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+
 from config import TOKEN
-from handlers import *
+from handlers import start, broadcast, stats, check_withdraw, approve, reject, button_handler, message_handler
+
 
 # Telegram Bot
-app = ApplicationBuilder().token(TOKEN).build()
+application = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("broadcast", broadcast))
-app.add_handler(CommandHandler("stats", stats))
-app.add_handler(CommandHandler("withdraws", check_withdraw))
-app.add_handler(CommandHandler("approve", approve))
-app.add_handler(CommandHandler("reject", reject))
+# Commands
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("broadcast", broadcast))
+application.add_handler(CommandHandler("stats", stats))
+application.add_handler(CommandHandler("withdraws", check_withdraw))
+application.add_handler(CommandHandler("approve", approve))
+application.add_handler(CommandHandler("reject", reject))
 
-app.add_handler(CallbackQueryHandler(button_handler))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+# Handlers
+application.add_handler(CallbackQueryHandler(button_handler))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+
 
 # Flask Web Server (Railway keep alive)
 web = Flask(__name__)
@@ -32,12 +37,6 @@ def run_web():
 # Run Flask in separate thread
 threading.Thread(target=run_web).start()
 
+
 print("🤖 Bot Started...")
-app.run_polling()
-
-
-print("Bot Started...")
-
-async def start(update, context):
-    print("Start command from:", update.effective_user.id)
-    await update.message.reply_text("Bot working!")
+application.run_polling()

@@ -39,7 +39,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ["🎁 Bonus", "💸 Withdraw"],
         ["🎯 Task", "📢 Channel"]
     ]
-    await update.message.reply_text("✅ Welcome to Earning Bot 🚀", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
+    await update.message.reply_text(
+        "✅ Welcome to Earning Bot 🚀",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -53,7 +56,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ["🎁 Bonus", "💸 Withdraw"],
                 ["🎯 Task", "📢 Channel"]
             ]
-            await query.message.reply_text("✅ Verified!", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
+            await query.message.reply_text(
+                "✅ Verified!",
+                reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            )
         else:
             await query.message.reply_text("❌ Join not completed!")
 
