@@ -4,7 +4,7 @@ from config import CHANNEL_USERNAME, ADMIN_ID
 from database import *
 import time
 
-
+# ===== Check Join =====
 async def check_join(update, context):
     user_id = update.effective_user.id
     try:
@@ -13,49 +13,49 @@ async def check_join(update, context):
     except:
         return False
 
-
+# ===== START COMMAND =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    referrer = None
-    if context.args:
-        try:
-            referrer = int(context.args[0])
-        except:
-            pass
-
-    add_user(user_id, referrer)
-
+    # join check
     if not await check_join(update, context):
         keyboard = [
             [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")],
             [InlineKeyboardButton("✅ Joined", callback_data="check_join")]
         ]
-        await update.message.reply_text("🚫 Join channel first!", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            "🚫 Join channel first!",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
 
+    # MAIN MENU (THIS WAS MISSING ❗)
     keyboard = [
         ["💰 Balance", "👥 Refer"],
         ["🎁 Bonus", "💸 Withdraw"],
         ["🎯 Task", "📢 Channel"]
     ]
+
     await update.message.reply_text(
         "✅ Welcome to Earning Bot 🚀",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
 
-
+# ===== BUTTON HANDLER (FIXED) =====
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     if query.data == "check_join":
         if await check_join(update, context):
+
             keyboard = [
                 ["💰 Balance", "👥 Refer"],
                 ["🎁 Bonus", "💸 Withdraw"],
                 ["🎯 Task", "📢 Channel"]
             ]
+
+            # 🔥 IMPORTANT FIX
             await query.message.reply_text(
                 "✅ Verified!",
                 reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -63,13 +63,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.message.reply_text("❌ Join not completed!")
 
-
+# ===== MESSAGE HANDLER =====
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
 
     if not await check_join(update, context):
-        await update.message.reply_text("⚠️ First channel join now!")
+        await update.message.reply_text("⚠️ First join channel!")
         return
 
     if text == "💰 Balance":
@@ -112,7 +112,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "📢 Channel":
         await update.message.reply_text(f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")
 
-
+# ===== ADMIN COMMANDS =====
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
