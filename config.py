@@ -1,7 +1,9 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-
-TOKEN = "8603830213:AAHlfZQUjuVDdv_syAfot5uQZfk0q22Snjs"
-CHANNEL_USERNAME = "@Submit2Get"
-ADMIN_ID = 7030829887  # তোমার Telegram ID
+MONGO_URI = os.getenv("MONGO_URI")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME")
