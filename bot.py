@@ -34,3 +34,10 @@ threading.Thread(target=run_web).start()
 
 print("🤖 Bot Started...")
 app.run_polling()
+
+
+print("Bot Started...")
+
+async def start(update, context):
+    print("Start command from:", update.effective_user.id)
+    await update.message.reply_text("Bot working!")
