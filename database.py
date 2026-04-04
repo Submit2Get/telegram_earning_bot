@@ -63,3 +63,31 @@ def is_task_done(user_id, task_id):
 def complete_task(user_id, task_id):
     cursor.execute("INSERT INTO tasks_done VALUES (?,?)", (user_id, task_id))
     conn.commit()
+
+    # ===== TASK SUBMISSION =====
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS submissions (
+    user_id INTEGER,
+    task_id TEXT,
+    file_id TEXT,
+    status TEXT
+)
+""")
+conn.commit()
+
+def submit_task(user_id, task_id, file_id):
+    cursor.execute("INSERT INTO submissions VALUES (?,?,?,?)", (user_id, task_id, file_id, "pending"))
+    conn.commit()
+
+def get_pending_tasks():
+    cursor.execute("SELECT * FROM submissions WHERE status='pending'")
+    return cursor.fetchall()
+
+def approve_task(user_id, task_id, reward):
+    cursor.execute("UPDATE submissions SET status='approved' WHERE user_id=? AND task_id=?", (user_id, task_id))
+    cursor.execute("UPDATE users SET balance=balance+? WHERE user_id=?", (reward, user_id))
+    conn.commit()
+
+def reject_task(user_id, task_id):
+    cursor.execute("UPDATE submissions SET status='rejected' WHERE user_id=? AND task_id=?", (user_id, task_id))
+    conn.commit()

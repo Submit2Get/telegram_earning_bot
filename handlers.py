@@ -6,153 +6,123 @@ import time
 
 # ===== TASK CONFIG =====
 TASKS = {
-    "1": {"name": "App Signup", "reward": 2, "link": "https://join.honeygain.com/SUBMI8997A"},
-    "2": {"name": "YouTube Subscribe", "reward": 2, "link": "https://www.youtube.com/@Submit2Get"},
-    "3": {"name": "Special Offer", "reward": 3, "link": "https://dm.1024terabox.com/referral/81365009834851"}
+    "1": {"name": "App Signup", "reward": 1, "link": "https://join.honeygain.com/SUBMI8997A"},
+    "2": {"name": "YouTube Subscribe", "reward": 1, "link": "https://www.youtube.com/@Submit2Get"},
+    "3": {"name": "Special Offer", "reward": 2, "link": "https://dm.1024terabox.com/referral/81365009834851"}
 }
-
-# ===== USER AUTO CREATE =====
-def ensure_user(user_id, ref=None):
-    add_user(user_id, ref)
-
-# ===== CHECK JOIN =====
-async def check_join(update, context):
-    try:
-        member = await context.bot.get_chat_member(CHANNEL_USERNAME, update.effective_user.id)
-        return member.status in ["member", "administrator", "creator"]
-    except:
-        return False
 
 # ===== START =====
 async def start(update, context):
     user = update.effective_user.id
-
-    ref = None
-    if context.args:
-        try:
-            ref = int(context.args[0])
-        except:
-            ref = None
-
-    ensure_user(user, ref)
-
-    # JOIN FORCE
-    if not await check_join(update, context):
-        keyboard = [
-            [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")],
-            [InlineKeyboardButton("✅ Joined", callback_data="check_join")]
-        ]
-
-        await update.message.reply_text(
-            "🚫 আগে চ্যানেলে জয়েন করুন!",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        return
+    ref = int(context.args[0]) if context.args else None
+    add_user(user, ref)
 
     keyboard = [
-        ["💰 Balance", "👥 Refer"],
-        ["🎁 Bonus", "💸 Withdraw"],
-        ["🎯 Task", "📢 Channel"]
+        ["💰 Balance","👥 Refer"],
+        ["🎁 Bonus","💸 Withdraw"],
+        ["🎯 Task","📢 Channel"]
     ]
 
-    await update.message.reply_text(
-        "✅ Welcome to Earning Bot 🚀",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
+    await update.message.reply_text("Welcome 🚀", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
 
-# ===== MESSAGE HANDLER =====
+# ===== MESSAGE =====
 async def message_handler(update, context):
-    user = update.effective_user.id
     text = update.message.text
-
-    ensure_user(user)
-
-    # FORCE JOIN CHECK EVERY TIME
-    if not await check_join(update, context):
-        await update.message.reply_text("⚠️ আগে চ্যানেল জয়েন করুন!")
-        return
+    user = update.effective_user.id
 
     # ===== BALANCE =====
     if text == "💰 Balance":
-        bal = get_balance(user)
-        await update.message.reply_text(f"💰 Balance: ₹{bal:.1f}")
+        await update.message.reply_text(f"₹{get_balance(user):.2f}")
 
-    # ===== REFER =====
-    elif text == "👥 Refer":
-        link = f"https://t.me/{context.bot.username}?start={user}"
-        await update.message.reply_text(f"🔗 Referral Link:\n{link}")
-
-    # ===== BONUS (FULL FIX) =====
+    # ===== BONUS (₹0.15) =====
     elif text == "🎁 Bonus":
-        last = get_last_bonus(user) or 0
+        last = get_last_bonus(user)
         now = int(time.time())
 
         if now - last >= 86400:
             add_balance(user, 0.15)
             update_bonus(user)
-
-            new_bal = get_balance(user)
-
-            await update.message.reply_text(
-                f"✅ Bonus Added ₹0.15\n💰 Updated Balance: ₹{new_bal:.1f}"
-            )
+            await update.message.reply_text(f"✅ ₹0.15 Added\nBalance: ₹{get_balance(user):.2f}")
         else:
-            remain = 86400 - (now - last)
-            hours = remain // 3600
-            minutes = (remain % 3600) // 60
+            await update.message.reply_text("❌ Already claimed today")
 
-            await update.message.reply_text(
-                f"⏳ Try after {hours}h {minutes}m"
-            )
-
-    # ===== TASK SYSTEM (UPGRADED UI) =====
+    # ===== TASK =====
     elif text == "🎯 Task":
-
-        keyboard = []
+        buttons = []
         for tid, t in TASKS.items():
-            keyboard.append([
-                InlineKeyboardButton(f"🔗 {t['name']}", url=t["link"]),
-                InlineKeyboardButton(f"✅ Claim ₹{t['reward']}", callback_data=f"claim_{tid}")
+            buttons.append([
+                InlineKeyboardButton(f"{t['name']} (₹{t['reward']})", url=t["link"]),
+                InlineKeyboardButton("📤 Submit", callback_data=f"submit_{tid}")
             ])
 
-        await update.message.reply_text(
-            "🎯 Complete tasks then click CLAIM:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        await update.message.reply_text("Complete task then submit screenshot", reply_markup=InlineKeyboardMarkup(buttons))
 
-    # ===== CHANNEL =====
-    elif text == "📢 Channel":
-        await update.message.reply_text(f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")
+    # ===== WITHDRAW =====
+    elif text == "💸 Withdraw":
+        await update.message.reply_text("Coming Soon...")
 
-# ===== BUTTON HANDLER =====
+# ===== BUTTON =====
 async def button(update, context):
-    query = update.callback_query
-    await query.answer()
+    q = update.callback_query
+    await q.answer()
 
-    user = query.from_user.id
+    user = q.from_user.id
 
-    # JOIN VERIFY BUTTON
-    if query.data == "check_join":
-        if await check_join(update, context):
-            await query.message.reply_text("✅ Verified! Now use bot menu")
-        else:
-            await query.message.reply_text("❌ এখনও জয়েন করেননি!")
+    if q.data.startswith("submit_"):
+        task_id = q.data.split("_")[1]
+        context.user_data["task"] = task_id
 
-    # TASK CLAIM
-    elif query.data.startswith("claim_"):
-        task_id = query.data.split("_")[1]
+        await q.message.reply_text("📸 Upload screenshot now")
 
-        if is_task_done(user, task_id):
-            await query.message.reply_text("❌ Already claimed this task")
-            return
+# ===== SCREENSHOT HANDLER =====
+async def photo_handler(update, context):
+    user = update.effective_user.id
 
-        reward = TASKS[task_id]["reward"]
+    if "task" not in context.user_data:
+        return
 
-        add_balance(user, reward)
-        complete_task(user, task_id)
+    task_id = context.user_data["task"]
+    file_id = update.message.photo[-1].file_id
 
-        new_bal = get_balance(user)
+    submit_task(user, task_id, file_id)
 
-        await query.message.reply_text(
-            f"🎉 Task Completed!\n💸 Earned: ₹{reward}\n💰 Balance: ₹{new_bal:.2f}"
+    await update.message.reply_text("✅ Submitted for review")
+
+    context.user_data.clear()
+
+# ===== ADMIN VIEW =====
+async def admin_tasks(update, context):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    data = get_pending_tasks()
+
+    for u, t, f, s in data:
+        btn = [
+            InlineKeyboardButton("Approve", callback_data=f"approve_{u}_{t}"),
+            InlineKeyboardButton("Reject", callback_data=f"reject_{u}_{t}")
+        ]
+
+        await update.message.reply_photo(
+            f,
+            caption=f"User:{u} Task:{t}",
+            reply_markup=InlineKeyboardMarkup([btn])
         )
+
+# ===== ADMIN ACTION =====
+async def admin_button(update, context):
+    q = update.callback_query
+    await q.answer()
+
+    data = q.data.split("_")
+    action, user, task = data
+
+    reward = TASKS[task]["reward"]
+
+    if action == "approve":
+        approve_task(int(user), task, reward)
+        await q.message.reply_text("✅ Approved")
+
+    else:
+        reject_task(int(user), task)
+        await q.message.reply_text("❌ Rejected")
