@@ -70,7 +70,40 @@ async def message_handler(update, context):
         await update.message.reply_text("Send UPI / PayPal")
 
     elif "withdraw" in context.user_data:
-    create_withdraw(user, get_points(user), text)
-    reset_points(user)
-    await update.message.reply_text("Request sent")
-    context.user_data.clear()
+        create_withdraw(user, get_points(user), text)
+        reset_points(user)
+        await update.message.reply_text("✅ Request sent")
+        context.user_data.clear()
+
+# BUTTON
+async def button(update, context):
+    q = update.callback_query
+    await q.answer()
+
+    user = q.from_user.id
+
+    if q.data.startswith("done_"):
+        tid = q.data.split("_")[1]
+        pts = TASKS[tid]['points']
+        add_points(user, pts)
+        await q.message.reply_text(f"🎉 +{pts} pts added")
+
+# ADMIN PANEL
+async def admin_panel(update, context):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    data = get_pending_withdraws()
+
+    if not data:
+        await update.message.reply_text("No pending withdraw")
+        return
+
+    for u, p, m in data:
+        await update.message.reply_text(
+            f"👤 User: {u}\n💰 Points: {p}\n💳 Method: {m}"
+        )
+
+# STATS
+async def stats(update, context):
+    await update.message.reply_text(f"👥 Users: {get_total_users()}")
