@@ -9,9 +9,9 @@ load_dotenv()
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 TASKS = {
-    "1": {"name": "App Install", "points": 40, "https://join.honeygain.com/SUBMI8997A"},
-    "2": {"name": "Signup Offer", "points": 60, "https://dm.1024terabox.com/referral/81365009834851"},
-    "3": {"name": "Survey Task", "points": 80, "link": "YOUR_CPA_LINK"}
+    "1": {"name": "App Install", "points": 40, "link": "https://join.honeygain.com/SUBMI8997A"},
+    "2": {"name": "Signup Offer", "points": 60, "link": "https://dm.1024terabox.com/referral/81365009834851"},
+    "3": {"name": "Survey Task", "points": 80, "link": "https://www.youtube.com/@Submit2Get"}
 }
 
 # START
@@ -70,6 +70,7 @@ async def message_handler(update, context):
         await update.message.reply_text("Send UPI / PayPal")
 
     elif "withdraw" in context.user_data:
-        create_withdraw(user, get_points(user), text)
-        reset_points(user)
-    await update.message.reply_text(f"Users: {get_total_users()}")
+    create_withdraw(user, get_points(user), text)
+    reset_points(user)
+    await update.message.reply_text("Request sent")
+    context.user_data.clear()
