@@ -4,8 +4,7 @@ conn = sqlite3.connect("bot.db", check_same_thread=False)
 c = conn.cursor()
 
 c.execute("CREATE TABLE IF NOT EXISTS users(user INTEGER PRIMARY KEY, points INTEGER DEFAULT 0, bonus INTEGER DEFAULT 0)")
-c.execute("CREATE TABLE IF NOT EXISTS withdraw(user INTEGER, points INTEGER, method TEXT)")
-c.execute("CREATE TABLE IF NOT EXISTS activity(text TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS withdraw(user INTEGER, points INTEGER, method TEXT, status TEXT)")
 conn.commit()
 
 # USERS
@@ -13,6 +12,7 @@ conn.commit()
 def add_user(u):
     c.execute("INSERT OR IGNORE INTO users(user) VALUES(?)", (u,))
     conn.commit()
+
 
 def get_total_users():
     return len(c.execute("SELECT user FROM users").fetchall())
@@ -47,11 +47,9 @@ def update_bonus(u):
 # WITHDRAW
 
 def create_withdraw(u,p,m):
-    c.execute("INSERT INTO withdraw VALUES(?,?,?)", (u,p,m))
+    c.execute("INSERT INTO withdraw VALUES(?,?,?,?)", (u,p,m,"pending"))
     conn.commit()
 
-# ACTIVITY
 
-def save_activity(t):
-    c.execute("INSERT INTO activity VALUES(?)", (t,))
-    conn.commit()
+def get_pending_withdraws():
+    return c.execute("SELECT user,points,method FROM withdraw WHERE status='pending'").fetchall()
