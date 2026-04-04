@@ -6,6 +6,7 @@ app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("admintasks", admin_tasks))
+app.add_handler(CommandHandler("stats", stats))
 
 app.add_handler(CallbackQueryHandler(admin_button, pattern="approve|reject"))
 app.add_handler(CallbackQueryHandler(button))

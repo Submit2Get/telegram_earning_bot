@@ -4,14 +4,13 @@ from config import CHANNEL_USERNAME, ADMIN_ID
 from database import *
 import time
 
-# ===== TASK CONFIG =====
 TASKS = {
     "1": {"name": "App Signup", "reward": 1, "link": "https://join.honeygain.com/SUBMI8997A"},
     "2": {"name": "YouTube Subscribe", "reward": 1, "link": "https://www.youtube.com/@Submit2Get"},
     "3": {"name": "Special Offer", "reward": 2, "link": "https://dm.1024terabox.com/referral/81365009834851"}
 }
 
-# ===== START =====
+# START
 async def start(update, context):
     user = update.effective_user.id
     ref = int(context.args[0]) if context.args else None
@@ -25,16 +24,18 @@ async def start(update, context):
 
     await update.message.reply_text("Welcome 🚀", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
 
-# ===== MESSAGE =====
+# MESSAGE
 async def message_handler(update, context):
     text = update.message.text
     user = update.effective_user.id
 
-    # ===== BALANCE =====
     if text == "💰 Balance":
         await update.message.reply_text(f"₹{get_balance(user):.2f}")
 
-    # ===== BONUS (₹0.15) =====
+    elif text == "👥 Refer":
+        link = f"https://t.me/{context.bot.username}?start={user}"
+        await update.message.reply_text(f"🔗 {link}")
+
     elif text == "🎁 Bonus":
         last = get_last_bonus(user)
         now = int(time.time())
@@ -46,7 +47,6 @@ async def message_handler(update, context):
         else:
             await update.message.reply_text("❌ Already claimed today")
 
-    # ===== TASK =====
     elif text == "🎯 Task":
         buttons = []
         for tid, t in TASKS.items():
@@ -54,14 +54,30 @@ async def message_handler(update, context):
                 InlineKeyboardButton(f"{t['name']} (₹{t['reward']})", url=t["link"]),
                 InlineKeyboardButton("📤 Submit", callback_data=f"submit_{tid}")
             ])
-
         await update.message.reply_text("Complete task then submit screenshot", reply_markup=InlineKeyboardMarkup(buttons))
 
-    # ===== WITHDRAW =====
-    elif text == "💸 Withdraw":
-        await update.message.reply_text("Coming Soon...")
+    elif text == "📢 Channel":
+        await update.message.reply_text(f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")
 
-# ===== BUTTON =====
+    elif text == "💸 Withdraw":
+        bal = get_balance(user)
+        if bal < 200:
+            await update.message.reply_text("❌ Minimum withdraw ₹200")
+            return
+
+        context.user_data["withdraw"] = True
+        await update.message.reply_text("💳 Send UPI ID")
+
+    elif "withdraw" in context.user_data:
+        upi = text
+        bal = get_balance(user)
+
+        create_withdraw(user, bal, upi)
+
+        await update.message.reply_text(f"✅ Request Sent\n₹{bal}\nUPI: {upi}")
+        context.user_data.clear()
+
+# BUTTON
 async def button(update, context):
     q = update.callback_query
     await q.answer()
@@ -71,10 +87,9 @@ async def button(update, context):
     if q.data.startswith("submit_"):
         task_id = q.data.split("_")[1]
         context.user_data["task"] = task_id
+        await q.message.reply_text("📸 Upload screenshot")
 
-        await q.message.reply_text("📸 Upload screenshot now")
-
-# ===== SCREENSHOT HANDLER =====
+# PHOTO
 async def photo_handler(update, context):
     user = update.effective_user.id
 
@@ -85,12 +100,11 @@ async def photo_handler(update, context):
     file_id = update.message.photo[-1].file_id
 
     submit_task(user, task_id, file_id)
-
     await update.message.reply_text("✅ Submitted for review")
 
     context.user_data.clear()
 
-# ===== ADMIN VIEW =====
+# ADMIN TASK VIEW
 async def admin_tasks(update, context):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -109,20 +123,25 @@ async def admin_tasks(update, context):
             reply_markup=InlineKeyboardMarkup([btn])
         )
 
-# ===== ADMIN ACTION =====
+# ADMIN ACTION
 async def admin_button(update, context):
     q = update.callback_query
     await q.answer()
 
-    data = q.data.split("_")
-    action, user, task = data
-
+    action, user, task = q.data.split("_")
     reward = TASKS[task]["reward"]
 
     if action == "approve":
         approve_task(int(user), task, reward)
         await q.message.reply_text("✅ Approved")
-
     else:
         reject_task(int(user), task)
         await q.message.reply_text("❌ Rejected")
+
+# STATS
+async def stats(update, context):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    users = get_all_users()
+    await update.message.reply_text(f"👥 Total Users: {len(users)}")
