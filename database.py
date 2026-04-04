@@ -1,93 +1,57 @@
-import sqlite3
-import time
+import sqlite3, time
 
 conn = sqlite3.connect("bot.db", check_same_thread=False)
-cursor = conn.cursor()
+c = conn.cursor()
 
-# USERS
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    referrer INTEGER,
-    balance REAL DEFAULT 0,
-    last_bonus INTEGER DEFAULT 0
-)
-""")
-
-# TASK SUBMISSION
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS submissions (
-    user_id INTEGER,
-    task_id TEXT,
-    file_id TEXT,
-    status TEXT
-)
-""")
-
-# WITHDRAW
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS withdraws (
-    user_id INTEGER,
-    amount REAL,
-    upi TEXT,
-    status TEXT
-)
-""")
-
+c.execute("CREATE TABLE IF NOT EXISTS users(user INTEGER PRIMARY KEY, points INTEGER DEFAULT 0, bonus INTEGER DEFAULT 0)")
+c.execute("CREATE TABLE IF NOT EXISTS withdraw(user INTEGER, points INTEGER, method TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS activity(text TEXT)")
 conn.commit()
 
-# ===== USER =====
-def add_user(user_id, ref=None):
-    cursor.execute("SELECT * FROM users WHERE user_id=?", (user_id,))
-    if cursor.fetchone() is None:
-        cursor.execute("INSERT INTO users (user_id, referrer) VALUES (?,?)", (user_id, ref))
-        conn.commit()
+# USERS
 
-        if ref and ref != user_id:
-            cursor.execute("UPDATE users SET balance=balance+1 WHERE user_id=?", (ref,))
-            conn.commit()
-
-def get_balance(user_id):
-    cursor.execute("SELECT balance FROM users WHERE user_id=?", (user_id,))
-    r = cursor.fetchone()
-    return float(r[0]) if r else 0.0
-
-def add_balance(user_id, amount):
-    cursor.execute("UPDATE users SET balance=balance+? WHERE user_id=?", (amount, user_id))
+def add_user(u):
+    c.execute("INSERT OR IGNORE INTO users(user) VALUES(?)", (u,))
     conn.commit()
 
-def get_last_bonus(user_id):
-    cursor.execute("SELECT last_bonus FROM users WHERE user_id=?", (user_id,))
-    r = cursor.fetchone()
+def get_total_users():
+    return len(c.execute("SELECT user FROM users").fetchall())
+
+# POINTS
+
+def get_points(u):
+    r = c.execute("SELECT points FROM users WHERE user=?", (u,)).fetchone()
     return r[0] if r else 0
 
-def update_bonus(user_id):
-    cursor.execute("UPDATE users SET last_bonus=? WHERE user_id=?", (int(time.time()), user_id))
+
+def add_points(u,p):
+    c.execute("UPDATE users SET points=points+? WHERE user=?", (p,u))
     conn.commit()
 
-# ===== TASK =====
-def submit_task(user_id, task_id, file_id):
-    cursor.execute("INSERT INTO submissions VALUES (?,?,?,?)", (user_id, task_id, file_id, "pending"))
+
+def reset_points(u):
+    c.execute("UPDATE users SET points=0 WHERE user=?", (u,))
     conn.commit()
 
-def get_pending_tasks():
-    cursor.execute("SELECT * FROM submissions WHERE status='pending'")
-    return cursor.fetchall()
+# BONUS
 
-def approve_task(user_id, task_id, reward):
-    cursor.execute("UPDATE submissions SET status='approved' WHERE user_id=? AND task_id=?", (user_id, task_id))
-    cursor.execute("UPDATE users SET balance=balance+? WHERE user_id=?", (reward, user_id))
+def can_claim_bonus(u):
+    r = c.execute("SELECT bonus FROM users WHERE user=?", (u,)).fetchone()
+    return time.time() - r[0] > 86400 if r else True
+
+
+def update_bonus(u):
+    c.execute("UPDATE users SET bonus=? WHERE user=?", (int(time.time()),u))
     conn.commit()
 
-def reject_task(user_id, task_id):
-    cursor.execute("UPDATE submissions SET status='rejected' WHERE user_id=? AND task_id=?", (user_id, task_id))
+# WITHDRAW
+
+def create_withdraw(u,p,m):
+    c.execute("INSERT INTO withdraw VALUES(?,?,?)", (u,p,m))
     conn.commit()
 
-# ===== WITHDRAW =====
-def create_withdraw(user_id, amount, upi):
-    cursor.execute("INSERT INTO withdraws VALUES (?,?,?,?)", (user_id, amount, upi, "pending"))
-    conn.commit()
+# ACTIVITY
 
-def get_all_users():
-    cursor.execute("SELECT user_id FROM users")
-    return cursor.fetchall()
+def save_activity(t):
+    c.execute("INSERT INTO activity VALUES(?)", (t,))
+    conn.commit()

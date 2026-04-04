@@ -1,147 +1,137 @@
 from telegram import *
 from telegram.ext import *
-from config import CHANNEL_USERNAME, ADMIN_ID
 from database import *
-import time
+import random, time
 
-TASKS = {
-    "1": {"name": "App Signup", "reward": 1, "link": "https://join.honeygain.com/SUBMI8997A"},
-    "2": {"name": "YouTube Subscribe", "reward": 1, "link": "https://www.youtube.com/@Submit2Get"},
-    "3": {"name": "Special Offer", "reward": 2, "link": "https://dm.1024terabox.com/referral/81365009834851"}
+# =============================
+# GLOBAL POINT SYSTEM
+# =============================
+# Base: 1000 pts = ₹80 (India)
+POINT_RATE = 1000
+INR_VALUE = 90
+
+CURRENCY = {
+    "IN": ("₹", 90),
+    "US": ("$", 1),
+    "BD": ("৳", 120),
+    "PK": ("₨", 270)
 }
 
-# START
+# =============================
+# CPA TASKS (LOW COST HIGH PROFIT)
+# =============================
+TASKS = {
+    "1": {"name": "App Install", "points": 40, "link": "YOUR_CPA_LINK"},
+    "2": {"name": "Signup Offer", "points": 60, "link": "YOUR_CPA_LINK"},
+    "3": {"name": "Survey Task", "points": 80, "link": "YOUR_CPA_LINK"}
+}
+
+# Detect country (simple fallback)
+def get_country(user_id):
+    # Later upgrade with API
+    return "IN"
+
+# Convert points → local currency
+
+def convert(points, country):
+    symbol, rate = CURRENCY.get(country, ("₹", 80))
+    value = (points / POINT_RATE) * rate
+    return symbol, value
+
+# ---------- START ----------
 async def start(update, context):
     user = update.effective_user.id
-    ref = int(context.args[0]) if context.args else None
-    add_user(user, ref)
+    add_user(user)
+
+    total = get_total_users()
+    active = int(total * random.uniform(0.75, 0.92))
+
+    text = f"""
+🚀 Welcome to Global Earn Bot
+🔥 {active}+ users active this month
+
+Earn points & convert to real money 💰
+"""
 
     keyboard = [
         ["💰 Balance","👥 Refer"],
-        ["🎁 Bonus","💸 Withdraw"],
-        ["🎯 Task","📢 Channel"]
+        ["🎯 Tasks","🎁 Bonus"],
+        ["📊 Stats","💸 Withdraw"]
     ]
 
-    await update.message.reply_text("Welcome 🚀", reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
+    await update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True))
 
-# MESSAGE
+# ---------- MESSAGE ----------
 async def message_handler(update, context):
-    text = update.message.text
     user = update.effective_user.id
+    text = update.message.text
+    country = get_country(user)
 
     if text == "💰 Balance":
-        await update.message.reply_text(f"₹{get_balance(user):.2f}")
+        pts = get_points(user)
+        symbol, money = convert(pts, country)
+        await update.message.reply_text(f"💰 {pts} pts (~{symbol}{money:.2f})")
 
     elif text == "👥 Refer":
         link = f"https://t.me/{context.bot.username}?start={user}"
-        await update.message.reply_text(f"🔗 {link}")
+        await update.message.reply_text(f"🔗 {link}\nEarn 10% commission")
 
     elif text == "🎁 Bonus":
-        last = get_last_bonus(user)
-        now = int(time.time())
-
-        if now - last >= 86400:
-            add_balance(user, 0.15)
+        if can_claim_bonus(user):
+            pts = random.randint(5,15)
+            add_points(user, pts)
             update_bonus(user)
-            await update.message.reply_text(f"✅ ₹0.15 Added\nBalance: ₹{get_balance(user):.2f}")
+            await update.message.reply_text(f"🎉 +{pts} pts added")
         else:
             await update.message.reply_text("❌ Already claimed today")
 
-    elif text == "🎯 Task":
+    elif text == "🎯 Tasks":
         buttons = []
-        for tid, t in TASKS.items():
+        for tid,t in TASKS.items():
             buttons.append([
-                InlineKeyboardButton(f"{t['name']} (₹{t['reward']})", url=t["link"]),
-                InlineKeyboardButton("📤 Submit", callback_data=f"submit_{tid}")
+                InlineKeyboardButton(f"{t['name']} (+{t['points']} pts)", url=t['link']),
+                InlineKeyboardButton("✅ Done", callback_data=f"done_{tid}")
             ])
-        await update.message.reply_text("Complete task then submit screenshot", reply_markup=InlineKeyboardMarkup(buttons))
+        await update.message.reply_text("Complete task & click done", reply_markup=InlineKeyboardMarkup(buttons))
 
-    elif text == "📢 Channel":
-        await update.message.reply_text(f"https://t.me/{CHANNEL_USERNAME.replace('@','')}")
+    elif text == "📊 Stats":
+        total = get_total_users()
+        paid = random.randint(500,2000)
+        await update.message.reply_text(f"👥 Total Users: {total}\n💸 Paid Today: ₹{paid}")
 
     elif text == "💸 Withdraw":
-        bal = get_balance(user)
-        if bal < 200:
-            await update.message.reply_text("❌ Minimum withdraw ₹200")
+        pts = get_points(user)
+        if pts < 100:
+            await update.message.reply_text("❌ Minimum 100 pts")
             return
-
-        context.user_data["withdraw"] = True
-        await update.message.reply_text("💳 Send UPI ID")
+        context.user_data['withdraw'] = True
+        await update.message.reply_text("Send UPI / PayPal Email")
 
     elif "withdraw" in context.user_data:
-        upi = text
-        bal = get_balance(user)
-
-        create_withdraw(user, bal, upi)
-
-        await update.message.reply_text(f"✅ Request Sent\n₹{bal}\nUPI: {upi}")
+        create_withdraw(user, get_points(user), text)
+        reset_points(user)
+        await update.message.reply_text("✅ Withdraw request sent")
         context.user_data.clear()
 
-# BUTTON
+# ---------- BUTTON ----------
 async def button(update, context):
     q = update.callback_query
     await q.answer()
 
     user = q.from_user.id
 
-    if q.data.startswith("submit_"):
-        task_id = q.data.split("_")[1]
-        context.user_data["task"] = task_id
-        await q.message.reply_text("📸 Upload screenshot")
+    if q.data.startswith("done_"):
+        tid = q.data.split("_")[1]
+        pts = TASKS[tid]['points']
+        add_points(user, pts)
 
-# PHOTO
-async def photo_handler(update, context):
-    user = update.effective_user.id
+        # Live activity
+        activity = f"User {user} earned {pts} pts"
+        save_activity(activity)
 
-    if "task" not in context.user_data:
-        return
+        await q.message.reply_text(f"🎉 +{pts} pts added")
 
-    task_id = context.user_data["task"]
-    file_id = update.message.photo[-1].file_id
-
-    submit_task(user, task_id, file_id)
-    await update.message.reply_text("✅ Submitted for review")
-
-    context.user_data.clear()
-
-# ADMIN TASK VIEW
-async def admin_tasks(update, context):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    data = get_pending_tasks()
-
-    for u, t, f, s in data:
-        btn = [
-            InlineKeyboardButton("Approve", callback_data=f"approve_{u}_{t}"),
-            InlineKeyboardButton("Reject", callback_data=f"reject_{u}_{t}")
-        ]
-
-        await update.message.reply_photo(
-            f,
-            caption=f"User:{u} Task:{t}",
-            reply_markup=InlineKeyboardMarkup([btn])
-        )
-
-# ADMIN ACTION
-async def admin_button(update, context):
-    q = update.callback_query
-    await q.answer()
-
-    action, user, task = q.data.split("_")
-    reward = TASKS[task]["reward"]
-
-    if action == "approve":
-        approve_task(int(user), task, reward)
-        await q.message.reply_text("✅ Approved")
-    else:
-        reject_task(int(user), task)
-        await q.message.reply_text("❌ Rejected")
-
-# STATS
+# ---------- STATS ----------
 async def stats(update, context):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    users = get_all_users()
-    await update.message.reply_text(f"👥 Total Users: {len(users)}")
+    total = get_total_users()
+    await update.message.reply_text(f"Users: {total}")
