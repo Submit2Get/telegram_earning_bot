@@ -9,8 +9,8 @@ load_dotenv()
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 TASKS = {
-    "1": {"name": "App Install", "points": 40, "link": "YOUR_CPA_LINK"},
-    "2": {"name": "Signup Offer", "points": 60, "link": "YOUR_CPA_LINK"},
+    "1": {"name": "App Install", "points": 40, "https://join.honeygain.com/SUBMI8997A"},
+    "2": {"name": "Signup Offer", "points": 60, "https://dm.1024terabox.com/referral/81365009834851"},
     "3": {"name": "Survey Task", "points": 80, "link": "YOUR_CPA_LINK"}
 }
 
